@@ -1,0 +1,102 @@
+"""Kangzhe hero pages (cover / toc / section / ending) for fluid html-ppt decks: fixed layout boxes, capacity checks.
+
+A ValueError here means a title or TOC description is too long for its box: shorten it, never shrink the font."""
+from pathlib import Path
+from html import escape
+import json
+import unicodedata
+# Vendored from Kangzhe Design 7.1 tools/hero_layout.py; tokens subset lives next to this file.
+T=json.loads((Path(__file__).resolve().parent/'tokens.json').read_text(encoding='utf-8'))
+def layout(kind, content):
+    k=T['hero_layouts'][kind]; blocks=[];cards=[]
+    def text(role, lines, rect, color='ink', bold=False, card_index=None, valign='top'):
+        if isinstance(lines,str):lines=lines.splitlines()
+        if lines is None:lines=[]
+        if not isinstance(lines,list) or any(not isinstance(line,str) for line in lines):raise ValueError('文字必须为字符串或逐行字符串列表')
+        if not lines or not any(line.strip() for line in lines):
+            if role in {'cover_title','toc_title','section_title','ending_title','section_number','toc_number','toc_label'}:raise ValueError('必需标题/编号不能为空')
+            return
+        if any(not line.strip() for line in lines):raise ValueError('不能用空行填充固定文字框')
+        size=T['type_px'][role]
+        if len(lines)*size*1.25>rect[3]+.01:raise ValueError('固定文字框溢出，请精简或拆页，不能缩字')
+        # A conservative routing guard, not native/font-shaped width certification.
+        def em(line):return sum(0 if unicodedata.combining(c) else 1 if unicodedata.east_asian_width(c) in {'W','F'} else .5 for c in line)
+        if rect[2]<=0 or any(em(line)*size>rect[2]+.01 for line in lines):raise ValueError('固定文字框横向容量不足，请精简或换行/拆页，不能裁字；最终仍须实际字体测量')
+        block=dict(role=role,lines=lines,rect=rect,font_px=size,line_height=1.25,color=T['colors'][color],bold=bold)
+        if card_index is not None:block['card_index']=card_index
+        if valign=='bottom':block['valign']='bottom'
+        blocks.append(block)
+    if kind=='cover':
+        # A one-line title rests on the bottom of its two-line box, so the gap to the subtitle does not depend on line count.
+        text('cover_title',content['title'],k['title'],bold=True,valign=k.get('title_valign','top'))
+        text('hero_subtitle',content.get('subtitle',''),k['subtitle'],'body')
+        text('hero_meta',content.get('meta',''),k['meta'],'muted')
+    elif kind=='section':
+        text('section_number',content['number'],k['number'],'brand',True)
+        text('section_title',content['title'],k['title'],bold=True)
+    elif kind=='ending':
+        text('ending_title',content['title'],k['title'],bold=True)
+        text('hero_subtitle',content.get('subtitle',''),k['subtitle'],'body')
+        text('hero_meta',content.get('meta',''),k['meta'],'muted')
+    else:
+        text('toc_title',content['title'],k['title'],bold=True)
+        items=content['items'];n=len(items)
+        if not 1<=n<=k['max_items']:raise ValueError('目录每页1至6项，更多必须拆页')
+        gx,gy,gw,_=k['grid'];gap=k['gap'];cw=(gw-2*gap)/3
+        for i,item in enumerate(items):
+            row=i//3;col=i%3;count=min(3,n-row*3);x=gx+(gw-(count*cw+(count-1)*gap))/2+col*(cw+gap);y=gy+row*(k['row_height']+gap)
+            cards.append([x,y,cw,k['row_height']])
+            reading=k['reading']
+            text('toc_number',f'{i+1:02d}',[x+reading['number_left'],y+reading['number_top'],reading['number_width'],reading['number_height']],'brand',True,card_index=i)
+            text('toc_label',item['title'],[x+reading['label_left'],y+reading['label_top'],cw-reading['label_left']-reading['label_right'],reading['label_height']],bold=True,card_index=i)
+            if str(item.get('description') or '').strip():
+                text('toc_description',item['description'],[x+reading['description_left'],y+reading['description_top'],cw-reading['description_left']-reading['description_right'],reading['description_height']],'body',card_index=i)
+    return k,blocks,cards
+
+def _valign_css(b):return 'display:flex;align-items:flex-end;' if b.get('valign')=='bottom' else ''
+def _lines_html(b):
+    lines='<br>'.join(escape(x) for x in b['lines'])
+    return f'<span>{lines}</span>' if b.get('valign')=='bottom' else lines
+
+def text_top(b):
+    """Top of the text lines inside the block rect (bottom-aligned blocks rest on the rect bottom)."""
+    x,y,w,h=b['rect']
+    return y+h-len(b['lines'])*b['font_px']*b['line_height'] if b.get('valign')=='bottom' else y
+
+def html_fluid_fragment(kind,content,image,logo):
+    """Same fixed layout for html-ppt fluid decks (kangzhe-design adapters/html-ppt.md (upstream reference, not shipped)): geometry in --kz-u, type in --kz-un.
+    Left text anchors keep their 1280-basis offsets; right-side logos follow the right anchor; the TOC row
+    spreads across the content width; hero titles enter in reading order. No second fit or navigation."""
+    k,blocks,cards=layout(kind,content);W=T['hero_layouts']['canvas'][0]
+    u=lambda n:f'calc({n:g} * var(--kz-u))'
+    def place(r,anchor_right=False):
+        x,y,w,h=r
+        if anchor_right:return f'right:{u(W-x-w)};top:{u(y)};width:{u(w)};height:{u(h)};'
+        return f'left:{u(x)};top:{u(y)};width:min({u(w)},calc(100% - {(x+(W-x-w)):g} * var(--kz-u)));height:{u(h)};'
+    order={'cover_title':0,'section_number':0,'ending_title':0,'toc_title':0,'section_title':1,'hero_subtitle':1,'hero_meta':2}
+    def text_html(b,inside_card=False,origin=(0,0)):
+        tag='h1' if b['role'] in ['cover_title','toc_title','section_title','ending_title'] else 'p'
+        x,y,w,h=b['rect'];x-=origin[0];y-=origin[1]
+        geo=f'left:{u(x)};top:{u(y)};right:{u(T["hero_layouts"]["toc"]["reading"]["label_right"])};height:{u(h)};' if inside_card else place([x,y,w,h])
+        reveal='' if inside_card else f' data-kz-reveal data-kz-order="{order.get(b["role"],1)}"'
+        return f'<{tag} data-hero-role="{b["role"]}"{reveal} style="position:absolute;{geo}margin:0;padding:0;border:0;font-family:var(--kz-font);font-size:calc({b["font_px"]}px * var(--kz-un,1));line-height:1.25;font-weight:{700 if b["bold"] else 400};color:{b["color"]};text-align:left;text-shadow:none;white-space:nowrap;{_valign_css(b)}">'+_lines_html(b)+f'</{tag}>'
+    ix,iy,iw,ih=k['image']
+    out=[f'<div class="kz-fixed-hero kz-hero-fluid" data-hero-layout="{k["id"]}" style="position:absolute;inset:0;overflow:hidden;background:#FBFCFD;">',
+         # Fluid view: the image covers the slide, bottom-anchored. A basis rect pushed down (y>0) means the subject
+         # sits low, so the cover shifts down by y as in the 16:9 basis (the subject clears the title zone) and a
+         # canvas-to-clear fade hides the image's top edge, as in svg_fragment; review crops per aspect (04 IMG-03).
+         f'<img class="kz-hero-image" aria-hidden="true" src="{escape(image,quote=True)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% {"100%" if iy>0 else "50%"};{"transform:translateY("+u(iy)+");" if iy>0 else ""}">',
+         *([f'<div class="kz-hero-fade" aria-hidden="true" style="position:absolute;left:0;right:0;top:{u(iy)};height:{u(T["hero_layouts"]["image_top_fade_px"])};background:linear-gradient(#FBFCFD,rgba(251,252,253,0));pointer-events:none;"></div>'] if iy>0 else []),
+         f'<img alt="康哲药业" src="{escape(logo,quote=True)}" style="position:absolute;{place(k["logo"],k["logo"][0]>W/2)}object-fit:contain;filter:none;">']
+    if cards:
+        g=k['grid'];gap=k['gap'];hero_tilt=T['motion']['tilt']['hero_max_deg']
+        out.append(f'<div class="kz-hero-toc" style="position:absolute;left:{u(g[0])};right:{u(W-g[0]-g[2])};top:{u(g[1])};display:flex;flex-wrap:wrap;justify-content:center;gap:{u(gap)};">')
+        for index,(x,y,w,h) in enumerate(cards):
+            out.append(f'<div data-kz-reveal data-kz-order="{1+index}" style="position:relative;flex:0 0 calc((100% - {2*gap:g} * var(--kz-u)) / 3);height:{u(h)};"><div class="kz-float" style="width:100%;height:100%;--kz-float-index:{index};"><div class="kz-card" data-kz-tilt="{hero_tilt}" data-kz-light style="position:relative;width:100%;height:100%;padding:0;">')
+            for b in blocks:
+                if b.get('card_index')==index:out.append(text_html(b,True,(x,y)))
+            out.append('</div></div></div>')
+        out.append('</div>')
+    for b in blocks:
+        if 'card_index' not in b:out.append(text_html(b))
+    return '\n'.join(out+['</div>'])

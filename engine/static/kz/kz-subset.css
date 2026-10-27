@@ -1,0 +1,61 @@
+/* Subset of Kangzhe kz-glass.css for this deck: glass card + float (hero TOC, from deck/kz/kz-glass.css lines 29-48,56,98-99,209-215)
+   and dialog/button rules for kz-drilldown.js (from kangzhe-design runtime/kz-glass.css lines 60-67,76,106-120). Copied verbatim. */
+.kz .kz-card {position:relative;isolation:isolate;min-width:0;padding:calc(var(--kz-pad) * var(--kz-component-u,1));border-radius:calc(var(--kz-radius) * var(--kz-component-u,1));border:1px solid transparent;
+  background:linear-gradient(145deg,rgba(var(--kz-face-top-rgb),var(--kz-face-top-alpha)) var(--kz-face-top-offset),rgba(var(--kz-face-mid-rgb),var(--kz-face-mid-alpha)) var(--kz-face-mid-offset),rgba(var(--kz-face-bottom-rgb),var(--kz-face-bottom-alpha)) var(--kz-face-bottom-offset)) padding-box,var(--kz-rim) border-box;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),inset 0 -1px 0 rgba(120,96,60,.06),var(--kz-shadow-dynamic);
+  backdrop-filter:blur(var(--kz-blur)) saturate(var(--kz-saturate));-webkit-backdrop-filter:blur(var(--kz-blur)) saturate(var(--kz-saturate));
+  transition:--kz-lift var(--kz-dur-tilt-settle) var(--kz-ease-standard),--kz-lx var(--kz-dur-tilt-settle) var(--kz-ease-standard),--kz-ly var(--kz-dur-tilt-settle) var(--kz-ease-standard);}
+/* Without the JS controller a hovered card still lifts; mountTilt marks owned cards .kz-tilt and drives the variables itself. */
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {.kz .kz-card:not(.kz-tilt):not([data-kz-no-tilt]):hover {--kz-lift:1;}}
+.kz .kz-card.kz-tilt {transition:none;}
+/* Specular sheen follows the pointer light; stronger while lifted. */
+.kz .kz-card::before {content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:-1;
+  background:radial-gradient(circle at var(--kz-mx,30%) var(--kz-my,0%),rgba(255,255,255,var(--kz-specular-alpha)),rgba(255,255,255,0) var(--kz-specular-radius));
+  opacity:calc(var(--kz-specular-rest) + var(--kz-lift,0) * (1 - var(--kz-specular-rest)));}
+/* Short edge glint (≤ highlight_extent_max of the top edge) slides with the pointer. */
+.kz .kz-card::after {content:"";position:absolute;top:-1px;height:1.5px;width:var(--kz-highlight-extent);left:clamp(6%,calc(var(--kz-mx,30%) - var(--kz-highlight-extent) / 2),calc(94% - var(--kz-highlight-extent)));border-radius:1px;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,1),rgba(255,255,255,0));pointer-events:none;}
+.kz .kz-card h3 {font-size:calc(var(--kz-type-card-title) * var(--kz-component-u,1));line-height:var(--kz-line-title);margin-bottom:calc(16px * var(--kz-component-u,1));font-weight:700;}
+.kz .kz-card p,.kz .kz-card li {font-size:calc(var(--kz-type-body) * var(--kz-component-u,1));line-height:var(--kz-line-body);}
+.kz .kz-card ul,.kz .kz-card ol {padding-left:1.2em;margin:0;}
+.kz .kz-card li+li {margin-top:calc(10px * var(--kz-component-u,1));}
+.kz .kz-card [data-kz-role="body"] {font-size:calc(var(--kz-type-body) * var(--kz-component-u,1));line-height:var(--kz-line-body);}
+.kz .kz-card[data-kz-no-tilt],.kz .kz-chart,.kz .kz-gantt {transform:none!important;}
+.kz .kz-float {animation:kz-float var(--kz-float-period) cubic-bezier(.45,0,.55,1) infinite;animation-delay:calc(var(--kz-float-index,0) * -1 * var(--kz-float-phase));}
+@keyframes kz-float {0%,100%{translate:0 0}50%{translate:0 calc(-1 * var(--kz-float-amplitude))}}
+@media(prefers-reduced-motion:reduce) {.kz .kz-float,.kz .kz-mark-float{animation:none!important}.kz .kz-tilt{transform:none!important}.kz .kz-card,.kz .kz-step,.kz .kz-button{transition:none}.kz .kz-step[data-state="current"]{translate:none}.kz .kz-optical-field{translate:none}.kz *{scroll-behavior:auto!important}}
+.kz[data-kz-frozen=true] .kz-float,.kz[data-kz-frozen=true] .kz-mark-float {animation:none!important;translate:0 0!important;}
+.kz[data-kz-frozen=true] .kz-tilt {transform:none!important;}
+@media print {.kz .kz-film-controls,.kz .kz-gantt-editor,.kz .kz-dirty{display:none!important}.kz .kz-float,.kz .kz-mark-float{animation:none!important}.kz .kz-card{box-shadow:none;backdrop-filter:none}.kz .kz-dialog{position:static;height:auto;overflow:visible;box-shadow:none}.kz .kz-chart{break-inside:avoid}.kz .kz-fold{height:auto}}
+
+.kz [data-kz-motion-active="false"] .kz-float,.kz [data-kz-motion-active="false"] .kz-mark-float {animation-play-state:paused;}
+.kz.kz-background-paused .kz-float,.kz.kz-background-paused .kz-mark-float {animation-play-state:paused;}
+.kz .kz-button {display:inline-flex;align-items:center;justify-content:center;gap:calc(8px * var(--kz-component-u,1));min-height:max(44px,calc(44px * var(--kz-component-u,1)));padding:calc(10px * var(--kz-component-u,1)) calc(18px * var(--kz-component-u,1));border:1px solid transparent;border-radius:calc(16px * var(--kz-component-u,1));
+  background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(255,245,223,.67)) padding-box,linear-gradient(165deg,rgba(255,255,255,.95),rgba(158,149,132,.38) 50%,rgba(255,255,255,.7)) border-box;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),0 1px 2px rgba(var(--kz-shadow-rgb),.06),0 4px 14px rgba(var(--kz-shadow-rgb),.07);cursor:pointer;text-decoration:none;color:var(--kz-ink);font-size:calc(var(--kz-type-body-floor) * var(--kz-component-u,1));
+  transition:box-shadow var(--kz-dur-hover) var(--kz-ease-standard),transform var(--kz-dur-press) var(--kz-ease-standard);}
+.kz .kz-button:hover {box-shadow:inset 0 1px 0 #fff,0 2px 4px rgba(var(--kz-shadow-rgb),.07),0 8px 22px rgba(var(--kz-shadow-rgb),.11);}
+.kz .kz-button:active {transform:scale(.98);}
+.kz .kz-button-primary {background:linear-gradient(135deg,#FFC966,var(--kz-brand)) padding-box,linear-gradient(165deg,rgba(255,255,255,.9),rgba(214,128,0,.6)) border-box;color:var(--kz-ink);font-weight:700;}
+.kz .kz-button:disabled {opacity:.5;cursor:default;}
+.kz .kz-error {color:var(--kz-risk);font-size:calc(var(--kz-type-body-floor) * var(--kz-component-u,1));}
+.kz .kz-dialog {width:var(--kz-dialog-width,82vw);max-width:92vw;height:fit-content;max-height:var(--kz-dialog-max-height,94vh);padding:0;border-radius:var(--kz-radius-dialog);border:1px solid rgba(178,178,178,.44);background:rgba(251,252,253,.96);box-shadow:var(--kz-elev-overlay);color:var(--kz-ink);font-family:var(--kz-font);overflow:hidden;}
+.kz-dialog::backdrop {background:rgba(39,42,46,.23);backdrop-filter:blur(5px);}
+/* Runtime-owned disjoint background roots; modal text never receives this filter. */
+.kz-drill-background {filter:blur(8px)!important;}
+.kz-drill-background,.kz-drill-background::before,.kz-drill-background::after,.kz-drill-background *,.kz-drill-background *::before,.kz-drill-background *::after {animation-play-state:paused!important;}
+.kz .kz-dialog-frame {height:auto;max-height:calc(var(--kz-dialog-max-height,94vh) - 2px);display:flex;flex-direction:column;}
+.kz .kz-dialog-head {display:flex;align-items:center;gap:calc(16px * var(--kz-component-u,1));padding:calc(24px * var(--kz-component-u,1)) calc(30px * var(--kz-component-u,1)) calc(16px * var(--kz-component-u,1));border-bottom:1px solid rgba(142,146,152,.18);flex-shrink:0;}
+.kz .kz-dialog-head h2 {font-size:calc(28px * var(--kz-component-u,1));line-height:1.3;margin:0;flex:1;min-width:0;}
+.kz .kz-breadcrumb {display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 calc(30px * var(--kz-component-u,1)) calc(12px * var(--kz-component-u,1));flex-shrink:0;}
+.kz .kz-breadcrumb[hidden] {display:none;}
+.kz .kz-breadcrumb button {border:0;background:none;font-size:calc(var(--kz-type-body-floor) * var(--kz-component-u,1));cursor:pointer;color:var(--kz-body);padding:4px;}
+.kz .kz-breadcrumb [aria-current=page] {font-weight:700;cursor:default;}
+.kz .kz-dialog-body {padding:calc(12px * var(--kz-component-u,1)) calc(30px * var(--kz-component-u,1)) calc(30px * var(--kz-component-u,1));overflow:auto;min-height:0;flex:1;}
+.kz .kz-dialog-body,.kz .kz-dialog [data-kz-role="body"] {font-size:calc(var(--kz-type-body) * var(--kz-component-u,1));line-height:var(--kz-line-body);}
+.kz .kz-dialog-body>section[hidden] {display:none;}
+/* Copied verbatim from kangzhe-design runtime/kz-glass.css lines 17-19 (TYPE-04 orphan control) and 102-103 (LG-03 header-mark float). */
+.kz p,.kz li,.kz td,.kz th,.kz dd {text-wrap:pretty;}
+.kz h1,.kz h2,.kz h3,.kz .kz-kpi-label,.kz .kz-kpi-note,.kz .kz-step b,.kz .kz-step p,.kz .kz-film-carrier-label {text-wrap:balance;}
+.kz .kz-mark-float {animation:kz-mark-float var(--kz-mark-float-period) cubic-bezier(.45,0,.55,1) infinite;}
+@keyframes kz-mark-float {0%,100%{translate:0 0}50%{translate:0 calc(-1 * var(--kz-mark-float-amplitude))}}
